@@ -1,0 +1,51 @@
+# Python virtual environment
+venv/
+ENV/
+env/
+.venv/
+bin/
+lib/
+lib64/
+share/
+include/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+downloads/
+translations/
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
+[Tt]mp/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project-specific temporary files
+*.zip
+*.tar.gz
+temp_extracted/
+temp_*/
+*.log

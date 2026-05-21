@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Code Analiz ve Raporlama Aracı</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">CC</div>
+                <div>
+                    <strong>Clean Code Analiz</strong>
+                    <span>Grup 10 kalite raporlama paneli</span>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="status-pill">Python AST</span>
+                <span class="status-pill">Radon Metrics</span>
+                <span class="status-pill">Zero Retention</span>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="input-surface" aria-label="Analiz girişi">
+                <div class="surface-header">
+                    <div>
+                        <p class="eyebrow">Analiz Kaynağı</p>
+                        <h1>Kaynak kodu seçin</h1>
+                    </div>
+                    <button class="ghost-button compact" id="sampleButton" type="button" data-icon="{}">Örnek yükle</button>
+                </div>
+
+                <div class="segmented-control" role="tablist" aria-label="Analiz türü">
+                    <button class="segment active" type="button" data-mode="paste">Kod</button>
+                    <button class="segment" type="button" data-mode="file">.py Dosya</button>
+                    <button class="segment" type="button" data-mode="project">.zip Proje</button>
+                </div>
+
+                <div class="input-panel active" data-input-panel="paste">
+                    <label class="field-label" for="codeInput">Python kodu</label>
+                    <div class="editor-frame">
+                        <div class="editor-toolbar">
+                            <span>PastedCode.py</span>
+                            <span>Canlı statik analiz</span>
+                        </div>
+                        <textarea id="codeInput" spellcheck="false" placeholder="Python kodunuzu buraya yapıştırın..."></textarea>
+                    </div>
+                    <button class="primary-button" id="pasteAnalyze" type="button" data-icon="RUN">Kodu analiz et</button>
+                </div>
+
+                <div class="input-panel" data-input-panel="file">
+                    <label class="field-label" for="fileInput">Tek Python dosyası</label>
+                    <button class="drop-zone" id="fileDrop" type="button">
+                        <span class="drop-icon">PY</span>
+                        <strong>.py dosyasını buraya bırakın</strong>
+                        <small>veya dosya seçmek için tıklayın</small>
+                    </button>
+                    <input id="fileInput" class="visually-hidden" type="file" accept=".py">
+                    <div class="selected-file" id="fileMeta">Henüz dosya seçilmedi.</div>
+                    <button class="primary-button" id="fileAnalyze" type="button" data-icon="RUN" disabled>Dosyayı analiz et</button>
+                </div>
+
+                <div class="input-panel" data-input-panel="project">
+                    <label class="field-label" for="zipInput">Python projesi</label>
+                    <button class="drop-zone project-drop" id="zipDrop" type="button">
+                        <span class="drop-icon">ZIP</span>
+                        <strong>Proje arşivini yükleyin</strong>
+                        <small>ZIP içindeki Python dosyaları taranır; sanal ortam ve cache klasörleri atlanır.</small>
+                    </button>
+                    <input id="zipInput" class="visually-hidden" type="file" accept=".zip">
+                    <div class="selected-file" id="zipMeta">Henüz ZIP seçilmedi.</div>
+                    <button class="primary-button" id="projectAnalyze" type="button" data-icon="RUN" disabled>Projeyi analiz et</button>
+                </div>
+
+                <div class="rules-strip">
+                    <span>Long Method</span>
+                    <span>God Class</span>
+                    <span>McCabe</span>
+                    <span>LCOM</span>
+                    <span>Halstead</span>
+                    <span>Duplicate Code</span>
+                </div>
+            </section>
+
+            <section class="report-surface" aria-label="Analiz raporu">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-visual" aria-hidden="true">
+                        <div></div><div></div><div></div><div></div>
+                    </div>
+                    <p class="eyebrow">Rapor Hazır Değil</p>
+                    <h2>Analiz tamamlandığında kalite özeti burada açılır.</h2>
+                    <p>Dashboard, dosya ağacı, satır bazlı ihlaller, teknik borç ve dışa aktarılabilir rapor aynı ekranda toplanır.</p>
+                </div>
+
+                <div class="results-shell" id="resultsShell" hidden>
+                    <div class="report-header">
+                        <div>
+                            <p class="eyebrow" id="scopeType">Analiz Raporu</p>
+                            <h2 id="scopeName">PastedCode.py</h2>
+                            <p id="scopeSummary">Kalite metrikleri hesaplandı.</p>
+                        </div>
+                        <div class="report-actions">
+                            <button class="ghost-button" id="exportJson" type="button" data-icon="↓">JSON</button>
+                            <button class="ghost-button" id="printReport" type="button" data-icon="PRN">PDF</button>
+                        </div>
+                    </div>
+
+                    <nav class="result-tabs" aria-label="Rapor sekmeleri">
+                        <button class="result-tab active" type="button" data-result-tab="overview">Özet</button>
+                        <button class="result-tab" type="button" data-result-tab="inspector">Kod İncele</button>
+                        <button class="result-tab" type="button" data-result-tab="violations">İhlaller</button>
+                    </nav>
+
+                    <div class="result-panel active" data-result-panel="overview">
+                        <section class="metric-grid">
+                            <article class="metric-card gate-card">
+                                <span>Quality Gate</span>
+                                <strong id="gateValue">PASSED</strong>
+                                <small id="gateText">Kalite eşiği geçildi.</small>
+                            </article>
+                            <article class="metric-card">
+                                <span>Maintainability</span>
+                                <div class="metric-row">
+                                    <strong id="miValue">0</strong>
+                                    <b class="grade-chip grade-a" id="gradeValue">A</b>
+                                </div>
+                                <div class="meter"><span id="miMeter"></span></div>
+                            </article>
+                            <article class="metric-card">
+                                <span>Teknik Borç</span>
+                                <strong id="debtValue">0 dk</strong>
+                                <small>Tahmini refactoring süresi</small>
+                            </article>
+                            <article class="metric-card">
+                                <span>Kapsam</span>
+                                <strong id="scopeValue">1 dosya</strong>
+                                <small id="linesValue">0 satır kod</small>
+                            </article>
+                        </section>
+
+                        <section class="overview-grid">
+                            <div class="analysis-block">
+                                <div class="block-title">
+                                    <h3>İhlal Yoğunluğu</h3>
+                                    <span id="totalViolations">0 bulgu</span>
+                                </div>
+                                <div class="severity-summary" id="severityVisual"></div>
+                            </div>
+
+                            <div class="analysis-block">
+                                <div class="block-title">
+                                    <h3>Öne Çıkan Kod Kokuları</h3>
+                                    <span>adet bazlı</span>
+                                </div>
+                                <div class="issue-bars" id="issueBars"></div>
+                            </div>
+                        </section>
+
+                        <section class="overview-grid">
+                            <div class="analysis-block">
+                                <div class="block-title">
+                                    <h3>Öncelikli Aksiyonlar</h3>
+                                    <span>etki sırasına göre</span>
+                                </div>
+                                <div class="action-list" id="actionList"></div>
+                            </div>
+
+                            <div class="analysis-block">
+                                <div class="block-title">
+                                    <h3>Dosya Sağlığı</h3>
+                                    <span>MI ve borç</span>
+                                </div>
+                                <div class="file-health-list" id="fileHealthList"></div>
+                            </div>
+                        </section>
+
+                        <section class="analysis-block full-width">
+                            <div class="block-title">
+                                <h3>Halstead ve Nesne Yönelimli Uyum</h3>
+                                <span>metrik özeti</span>
+                            </div>
+                            <div class="metric-detail-grid">
+                                <div><span>Vocabulary</span><strong id="hVocabulary">0</strong></div>
+                                <div><span>Length</span><strong id="hLength">0</strong></div>
+                                <div><span>Volume</span><strong id="hVolume">0</strong></div>
+                                <div><span>Difficulty</span><strong id="hDifficulty">0</strong></div>
+                                <div><span>Effort</span><strong id="hEffort">0</strong></div>
+                                <div><span>Time</span><strong id="hTime">0</strong></div>
+                                <div><span>Bugs</span><strong id="hBugs">0</strong></div>
+                                <div><span>LCOM Sınıfları</span><strong id="lcomCount">0</strong></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="result-panel" data-result-panel="inspector">
+                        <section class="inspector-layout">
+                            <aside class="file-rail">
+                                <div class="rail-header">
+                                    <h3>Dosyalar</h3>
+                                    <span id="fileCountLabel">0</span>
+                                </div>
+                                <div class="file-buttons" id="fileButtons"></div>
+                            </aside>
+
+                            <div class="code-panel">
+                                <div class="code-header">
+                                    <div>
+                                        <span id="activeFilePath">PastedCode.py</span>
+                                        <small id="activeFileMeta">0 satır</small>
+                                    </div>
+                                    <div class="code-badges">
+                                        <span id="activeFileMi">MI 0</span>
+                                        <span id="activeFileDebt">0 dk</span>
+                                    </div>
+                                </div>
+                                <div class="code-viewer" id="codeViewer" aria-label="Kod görüntüleyici"></div>
+                            </div>
+
+                            <aside class="file-detail">
+                                <div class="rail-header">
+                                    <h3>Dosya Bulguları</h3>
+                                    <span id="activeViolationCount">0</span>
+                                </div>
+                                <div class="file-violations" id="fileViolations"></div>
+                            </aside>
+                        </section>
+                    </div>
+
+                    <div class="result-panel" data-result-panel="violations">
+                        <section class="analysis-block full-width">
+                            <div class="violation-toolbar">
+                                <div class="filter-group" id="severityFilters">
+                                    <button class="filter-chip active" type="button" data-severity="ALL">Tümü</button>
+                                    <button class="filter-chip" type="button" data-severity="CRITICAL">Kritik</button>
+                                    <button class="filter-chip" type="button" data-severity="MAJOR">Majör</button>
+                                    <button class="filter-chip" type="button" data-severity="MINOR">Minör</button>
+                                </div>
+                                <label class="search-field">
+                                    <span>Ara</span>
+                                    <input id="violationSearch" type="search" placeholder="Kural, dosya veya açıklama">
+                                </label>
+                            </div>
+                            <div class="table-wrap">
+                                <table class="violations-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Önem</th>
+                                            <th>Kural</th>
+                                            <th>Dosya</th>
+                                            <th>Satır</th>
+                                            <th>Açıklama</th>
+                                            <th>Borç</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="violationTableBody"></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay" hidden>
+        <div class="loader-card">
+            <div class="loader-bar"><span></span></div>
+            <strong id="loadingText">Analiz çalışıyor...</strong>
+            <small>AST, karmaşıklık ve teknik borç metrikleri hesaplanıyor.</small>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
