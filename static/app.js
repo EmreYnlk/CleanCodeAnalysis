@@ -620,8 +620,14 @@ function renderFileViolations(path, violations) {
             </button>
         `).join("");
 
-    $$(".file-finding", container).forEach((button) => {
-        button.addEventListener("click", () => scrollToCodeLine(Number(button.dataset.line)));
+    $$(".file-finding", container).forEach((button, idx) => {
+        button.addEventListener("click", () => {
+            // Aktif seçili görünümü güncelle
+            $$(".file-finding", container).forEach(b => b.classList.remove("selected"));
+            button.classList.add("selected");
+            scrollToCodeLine(Number(button.dataset.line));
+            showSuggestion(violations[idx]);
+        });
     });
 }
 
@@ -676,6 +682,319 @@ function scrollToCodeLine(line) {
         );
     });
 }
+
+// ─── Refactoring Öneri Paneli ───────────────────────────────────────────────
+
+function showSuggestion(violation) {
+    const panel   = $("#suggestionPanel");
+    const data    = generateSuggestion(violation);
+    const sevCls  = severityClass(violation.severity);
+
+    $("#suggestionTitle").textContent          = shortRuleName(violation.type);
+    $("#suggestionDesc").textContent           = violation.description;
+    $("#suggestionSeverityBadge").textContent  = displaySeverity(violation.severity);
+    $("#suggestionSeverityBadge").className    = `severity-badge ${sevCls}`;
+    $("#suggestionIcon").className             = `suggestion-icon icon-${sevCls}`;
+    $("#suggestionMeta").innerHTML =
+        `<span>📄 ${escapeHtml(violation.file)}</span>` +
+        `<span>📍 Satır ${violation.line}</span>` +
+        `<span>⏱ Tahmini düzeltme: ${formatDebt(violation.cost_mins)}</span>`;
+
+    $("#suggestionBadCode").querySelector("code").textContent  = data.bad;
+    $("#suggestionGoodCode").querySelector("code").textContent = data.good;
+
+    $("#suggestionPrinciple").innerHTML = data.principle
+        ? `<span class="principle-tag">📐 Prensip</span>${escapeHtml(data.principle)}`
+        : "";
+
+    panel.hidden = false;
+    requestAnimationFrame(() => {
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+}
+
+function generateSuggestion(violation) {
+    const type = (violation.type || "").toLowerCase();
+
+    if (type.includes("syntax")) {
+        return {
+            bad: `# Hatalı Python sözdizimi örneği
+def hesapla(x, y)
+    return x + y   # ':' eksik
+
+class Veri
+    pass           # ':' eksik`,
+            good: `# Düzeltilmiş sözdizimi
+def hesapla(x, y):
+    return x + y
+
+class Veri:
+    pass`,
+            principle: "Sözdizimi hatası giderilmeden hiçbir statik analiz güvenilir sonuç vermez."
+        };
+    }
+
+    if (type.includes("god class")) {
+        return {
+            bad: `# God Class — her şeyi yapan tek sınıf
+class SistemYoneticisi:
+    def kullanici_kaydet(self, ...): ...
+    def email_gonder(self, ...): ...
+    def rapor_uret(self, ...): ...
+    def veritabani_baglan(self, ...): ...
+    def log_yaz(self, ...): ...
+    def fatura_olustur(self, ...): ...
+    def odeme_al(self, ...): ...
+    def bildirim_gonder(self, ...): ...`,
+            good: `# Her sınıf tek sorumluluğa sahip
+class KullaniciBilgisi:
+    def kaydet(self): ...
+
+class EmailServisi:
+    def gonder(self, mesaj): ...
+
+class RaporUretici:
+    def uret(self, veri): ...
+
+class OdemeServisi:
+    def al(self, tutar): ...`,
+            principle: "Single Responsibility Principle (SRP) — Her sınıfın değişmesi için yalnızca tek bir nedeni olmalıdır."
+        };
+    }
+
+    if (type.includes("long method")) {
+        return {
+            bad: `# Uzun metot — 30+ satır tek fonksiyon
+def siparisleri_isle(self, siparisler):
+    toplam = 0
+    gecerli = []
+    for s in siparisler:
+        if s["durum"] == "aktif":
+            if s["tutar"] > 0:
+                vergi = s["tutar"] * 0.18
+                net   = s["tutar"] + vergi
+                toplam += net
+                gecerli.append({
+                    "id": s["id"],
+                    "net": net,
+                    "vergi": vergi,
+                })
+    # ... 20 satır daha devam ediyor`,
+            good: `# Her iş adımı ayrı küçük metotta
+def siparisleri_isle(self, siparisler):
+    aktif = self._aktif_siparisleri_filtrele(siparisler)
+    return [self._siparis_hesapla(s) for s in aktif]
+
+def _aktif_siparisleri_filtrele(self, siparisler):
+    return [s for s in siparisler
+            if s["durum"] == "aktif" and s["tutar"] > 0]
+
+def _siparis_hesapla(self, siparis):
+    vergi = siparis["tutar"] * 0.18
+    return {"id": siparis["id"],
+            "net": siparis["tutar"] + vergi,
+            "vergi": vergi}`,
+            principle: "Extract Method — Uzun metotları anlamlı isimler taşıyan yardımcı fonksiyonlara bölün (Clean Code, R. Martin)."
+        };
+    }
+
+    if (type.includes("mccabe") || type.includes("karmaşıklık")) {
+        return {
+            bad: `# Yüksek McCabe karmaşıklığı (iç içe koşullar)
+def kategori_bul(self, urun):
+    if urun.tip == "A":
+        if urun.fiyat > 100:
+            if urun.stok > 0:
+                if urun.kampanya:
+                    return "premium-indirimli"
+                return "premium"
+            return "stok-yok"
+        return "ekonomik"
+    elif urun.tip == "B":
+        if urun.stok > 0:
+            return "standart"
+        return "stok-yok"
+    return "belirsiz"`,
+            good: `# Erken dönüş + guard clause ile sadeleştirilmiş
+def kategori_bul(self, urun):
+    if urun.stok == 0:
+        return "stok-yok"
+    if urun.tip == "B":
+        return "standart"
+    if urun.tip != "A":
+        return "belirsiz"
+    if urun.fiyat <= 100:
+        return "ekonomik"
+    return "premium-indirimli" if urun.kampanya else "premium"`,
+            principle: "Guard Clause & Early Return — Koşulları düzleştirerek okunabilirliği artırın; CC skoru ≤ 10 hedefleyin."
+        };
+    }
+
+    if (type.includes("argument") || type.includes("parametre")) {
+        return {
+            bad: `# 8 parametre — çok fazla!
+def kullanici_kaydet(self, ad, soyad, eposta,
+                     telefon, sifre, adres,
+                     rol, yetki_seviyesi):
+    ...
+
+kullanici_kaydet("Ali", "Veli", "a@b.com",
+                 "555", "pass", "İst.", "admin", 5)`,
+            good: `# Parametre Nesnesi ile temizleme
+from dataclasses import dataclass
+
+@dataclass
+class KullaniciBilgisi:
+    ad: str
+    soyad: str
+    eposta: str
+    telefon: str
+    sifre: str
+    adres: str
+    rol: str
+    yetki_seviyesi: int
+
+def kullanici_kaydet(self, bilgi: KullaniciBilgisi):
+    ...
+
+bilgi = KullaniciBilgisi("Ali", "Veli", "a@b.com",
+                          "555", "pass", "İst.", "admin", 5)
+kullanici_kaydet(bilgi)`,
+            principle: "Introduce Parameter Object — Birlikte seyahat eden verileri bir veri yapısında toplayın."
+        };
+    }
+
+    if (type.includes("deep nesting") || type.includes("dallanma")) {
+        return {
+            bad: `# Derin iç içe döngü/koşul (derinlik: 4+)
+def hesapla(self, liste):
+    for veri in liste:
+        if veri is not None:
+            if isinstance(veri, (int, float)):
+                if veri > 0:
+                    for carpan in range(1, 6):
+                        if carpan % 2 != 0:
+                            sonuc += veri * carpan`,
+            good: `# Guard clause + yardımcı fonksiyon ile düzleştirme
+def hesapla(self, liste):
+    return sum(
+        self._tek_veri_hesapla(veri)
+        for veri in liste
+        if self._gecerli_mi(veri)
+    )
+
+def _gecerli_mi(self, veri):
+    return veri is not None and isinstance(veri, (int, float)) and veri > 0
+
+def _tek_veri_hesapla(self, veri):
+    return sum(veri * c for c in range(1, 6) if c % 2 != 0)`,
+            principle: "Flatten Conditionals — İç içe yapıları guard clause ve yardımcı metodlarla en fazla 2–3 seviyeye indirin."
+        };
+    }
+
+    if (type.includes("feature envy")) {
+        return {
+            bad: `# Feature Envy — başka nesnenin verisine aşırı erişim
+class SiparisServisi:
+    def ozetle(self, musteri):
+        # Müşteri nesnesine 5 farklı erişim!
+        ad    = musteri.ad
+        mail  = musteri.eposta
+        adres = musteri.adres
+        kredi = musteri.kredi_limiti
+        puan  = musteri.sadakat_puani
+        return f"{ad} / {mail} / {adres} / {kredi} / {puan}"`,
+            good: `# Davranış doğru nesneye taşındı
+class Musteri:
+    def ozet_bilgi(self) -> str:
+        return (f"{self.ad} / {self.eposta} / "
+                f"{self.adres} / {self.kredi_limiti} / "
+                f"{self.sadakat_puani}")
+
+class SiparisServisi:
+    def ozetle(self, musteri):
+        return musteri.ozet_bilgi()   # tek erişim`,
+            principle: "Move Method — Bir metot başka sınıfın verisine kendininkinden daha fazla erişiyorsa oraya taşıyın."
+        };
+    }
+
+    if (type.includes("unused local") || type.includes("gereksiz değişken")) {
+        return {
+            bad: `def hesapla(self, liste):
+    sonuc = 0
+    gecici = 99          # hiç kullanılmıyor!
+    debug_flag = True    # hiç kullanılmıyor!
+    for x in liste:
+        sonuc += x
+    return sonuc`,
+            good: `def hesapla(self, liste):
+    sonuc = 0
+    for x in liste:
+        sonuc += x
+    return sonuc
+
+# Daha Pythonic yol:
+def hesapla(self, liste):
+    return sum(liste)`,
+            principle: "Dead Code Elimination — Kullanılmayan değişkenler okunabilirliği düşürür ve bakım maliyetini artırır."
+        };
+    }
+
+    if (type.includes("import") || type.includes("kütüphane")) {
+        return {
+            bad: `import os        # kullanılmıyor
+import sys       # kullanılmıyor
+import json      # kullanılmıyor
+import math
+
+def alan_hesapla(yaricap):
+    return math.pi * yaricap ** 2`,
+            good: `import math      # yalnızca kullanılan kütüphane
+
+def alan_hesapla(yaricap):
+    return math.pi * yaricap ** 2`,
+            principle: "Minimum Dependency — Yalnızca ihtiyaç duyulan bağımlılıkları içe aktarın; bu derleme süresini ve karmaşıklığı azaltır."
+        };
+    }
+
+    if (type.includes("duplicate") || type.includes("kopya")) {
+        return {
+            bad: `# Aynı hesaplama iki farklı yerde tekrarlanıyor
+def fatura_hesapla(tutar):
+    vergi = tutar * 0.18
+    return tutar + vergi
+
+def teklif_hesapla(tutar):
+    vergi = tutar * 0.18   # kopya!
+    return tutar + vergi`,
+            good: `# Ortak fonksiyon çıkarıldı (DRY)
+KDV_ORANI = 0.18
+
+def kdv_ekle(tutar: float) -> float:
+    return tutar * (1 + KDV_ORANI)
+
+def fatura_hesapla(tutar):
+    return kdv_ekle(tutar)
+
+def teklif_hesapla(tutar):
+    return kdv_ekle(tutar)`,
+            principle: "DRY — Don't Repeat Yourself. Her bilgi parçasının sistemde tek, kesin, yetkili bir temsili olmalıdır."
+        };
+    }
+
+    // Genel fallback
+    return {
+        bad: `# Mevcut kod ihlal içeriyor
+# Lütfen aşağıdaki öneriyi inceleyin`,
+        good: `# Temiz kod hedefi:
+# • Kısa ve odaklı fonksiyonlar (< 15 satır)
+# • Net isimlendirme
+# • Tek sorumluluk (SRP)
+# • Tekrardan kaçınma (DRY)`,
+        principle: "Kodun okunabilirliği her zaman önce gelir — kod yazılmaktan çok okunur."
+    };
+}
+
 
 function exportJsonReport() {
     if (!state.report) return;

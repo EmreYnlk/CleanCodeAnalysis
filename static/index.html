@@ -227,6 +227,40 @@
                                 <div class="file-violations" id="fileViolations"></div>
                             </aside>
                         </section>
+
+                        <!-- Refactoring Öneri Paneli -->
+                        <section class="suggestion-panel" id="suggestionPanel" hidden>
+                            <div class="suggestion-header">
+                                <div class="suggestion-title-row">
+                                    <div class="suggestion-icon" id="suggestionIcon">✦</div>
+                                    <div>
+                                        <p class="eyebrow">Refactoring Önerisi</p>
+                                        <h3 id="suggestionTitle">Kural İhlali</h3>
+                                    </div>
+                                    <span class="severity-badge" id="suggestionSeverityBadge">MINOR</span>
+                                </div>
+                                <p class="suggestion-desc" id="suggestionDesc"></p>
+                                <div class="suggestion-meta" id="suggestionMeta"></div>
+                            </div>
+                            <div class="suggestion-body">
+                                <div class="suggestion-col">
+                                    <div class="suggestion-col-label bad">
+                                        <span class="col-dot bad-dot"></span>
+                                        Mevcut Sorunlu Kod
+                                    </div>
+                                    <pre class="suggestion-code bad-code" id="suggestionBadCode"><code></code></pre>
+                                </div>
+                                <div class="suggestion-arrow" aria-hidden="true">→</div>
+                                <div class="suggestion-col">
+                                    <div class="suggestion-col-label good">
+                                        <span class="col-dot good-dot"></span>
+                                        Önerilen Temiz Kod
+                                    </div>
+                                    <pre class="suggestion-code good-code" id="suggestionGoodCode"><code></code></pre>
+                                </div>
+                            </div>
+                            <div class="suggestion-principle" id="suggestionPrinciple"></div>
+                        </section>
                     </div>
 
                     <div class="result-panel" data-result-panel="violations">
