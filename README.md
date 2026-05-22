@@ -41,7 +41,7 @@ Python kaynak kodlarını statik analiz yöntemleriyle inceleyen, temiz kod ihla
 
 ```bash
 # Repoyu klonlayın
-git clone https://github.com/kullanici-adi/CleanCodeAnalysis.git
+git clone https://github.com/EmreYnlk/CleanCodeAnalysis.git
 cd CleanCodeAnalysis
 
 # Sanal ortam oluşturun
