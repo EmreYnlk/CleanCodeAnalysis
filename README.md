@@ -23,7 +23,7 @@ Python kaynak kodlarını statik analiz yöntemleriyle inceleyen, temiz kod ihla
 - Teknik borç hesaplama (dakika cinsinden tahmini refactoring süresi)
 - Kalite kapısı (Quality Gate): PASSED / FAILED
 - Kalite notu: A, B, C, D, F
-- Ihlale tıklayınca satır bazlı kod vurgulama ve refactoring önerisi paneli
+- İhlale tıklayınca **Google Gemini AI** destekli dinamik refactoring önerisi ve satır bazlı temiz kod örnekleri
 - JSON raporu dışa aktarma
 - PDF yazdırma desteği
 - Üç analiz modu: Kod Yapıştır, Tek .py Dosyası, .zip Proje Arşivi
@@ -50,6 +50,10 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 
 # Bağımlılıkları yükleyin
 pip install -r requirements.txt
+
+# Çevre değişkenlerini (API Key) yapılandırın
+# Proje kök dizininde .env dosyası oluşturun ve Gemini API anahtarınızı ekleyin
+echo 'GEMINI_API_KEY="sizin_api_anahtariniz"' > .env
 ```
 
 ---
@@ -110,7 +114,22 @@ Bir `.zip` arşivini alır; içindeki tüm `.py` dosyalarını analiz eder ve do
 
 Form alanı: `file` (`.zip` uzantılı arşiv, maks. 10 MB)
 
-Tüm endpoint'ler aynı rapor yapısını döner:
+### POST /api/v1/suggest
+
+Bir kural ihlali için Gemini AI modelini kullanarak düzeltilmiş örnek kod ve açıklama üretir.
+
+İstek gövdesi (JSON):
+```json
+{
+  "violation_type": "Long Method",
+  "description": "Fonksiyon 30 satırdan uzun.",
+  "file": "ornek.py",
+  "line": 15,
+  "content": "def ornek():\n..."
+}
+```
+
+Tüm analiz endpoint'leri aynı rapor yapısını döner:
 ```json
 {
   "mesaj": "Analiz başarıyla tamamlandı.",

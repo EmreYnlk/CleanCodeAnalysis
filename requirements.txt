@@ -5,5 +5,5 @@ pydantic_core==2.46.4
 python-multipart==0.0.29
 radon==6.0.1
 starlette==1.0.0
-google-genai>=0.1.2
-python-dotenv>=1.0.0
+google-genai==2.6.0
+python-dotenv==1.2.2
