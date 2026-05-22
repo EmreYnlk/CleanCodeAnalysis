@@ -1,4 +1,7 @@
 import io
+import os
+import random
+import asyncio
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -6,6 +9,10 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from dotenv import load_dotenv
+from google import genai
+
+load_dotenv()
 
 from analyzer_engine.core import kodu_analiz_et, projeyi_analiz_et
 
@@ -41,6 +48,68 @@ app = FastAPI(title="Clean Code Analyzer API")
 
 class AnalizIstegi(BaseModel):
     kaynak_kod: str
+
+
+class SuggestionIstegi(BaseModel):
+    violation_type: str
+    description: str
+    file: str
+    line: int
+    content: str = ""
+
+
+@app.post("/api/v1/suggest")
+async def generate_ai_suggestion(istek: SuggestionIstegi):
+    await asyncio.sleep(random.uniform(2.0, 3.0))
+    
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Gemini API anahtarı yapılandırılmamış.")
+        
+    client = genai.Client(api_key=api_key)
+    prompt = f"""
+Sen uzman bir Python geliştiricisisin. Clean Code ve SOLID prensiplerine hakimsin.
+Aşağıdaki kod kuralı ihlali için bana düzeltilmiş bir kod örneği ve açıklama üret.
+
+Hata Türü: {istek.violation_type}
+Açıklama: {istek.description}
+Dosya: {istek.file}
+Satır: {istek.line}
+
+Bağlam/Kod:
+{istek.content}
+
+Yanıtını sadece JSON formatında ve şu yapıda ver (markdown veya code block etiketi kullanma, doğrudan parse edilebilir JSON ver):
+{{
+    "bad": "Hatalı kod parçası (string olarak)",
+    "good": "Düzeltilmiş temiz kod parçası (string olarak)",
+    "principle": "Uygulanan clean code prensibi veya açıklama (kısa, 1 cümle)"
+}}
+"""
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        import json
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        data = json.loads(text.strip())
+        return data
+        
+    except Exception as exc:
+        return {
+            "bad": "# Yapay zeka yanıt üretirken hata oluştu.",
+            "good": "# Lütfen manuel inceleme yapın.",
+            "principle": f"Hata detayı: {str(exc)}"
+        }
 
 
 def decode_source(content: bytes) -> str:

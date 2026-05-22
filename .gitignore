@@ -49,3 +49,7 @@ Thumbs.db
 temp_extracted/
 temp_*/
 *.log
+
+#env
+.env
+.flaskenv
